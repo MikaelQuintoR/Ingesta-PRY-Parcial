@@ -3,5 +3,5 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY data/ data/
-COPY Ingesta-MySQL.py .
-CMD ["python", "Ingesta-MySQL.py"]
+COPY IngestaMySQL.py .
+CMD ["python", "IngestaMySQL.py"]
