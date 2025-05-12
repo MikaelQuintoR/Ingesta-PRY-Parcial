@@ -1,7 +1,15 @@
 FROM python:3.12-slim
 WORKDIR /app
+
+# Instalar dependencias
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY data/ data/
+
+# Copiar datos y script
+COPY data/ ./data/
 COPY IngestaMySQL.py .
+
+# Exponer puerto del contenedor (reemplazar antes de usar)
+EXPOSE ___
+
 CMD ["python", "IngestaMySQL.py"]
