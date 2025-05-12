@@ -1,5 +1,7 @@
 import boto3
 import json
+
+from bson import ObjectId
 from pymongo import MongoClient
 
 # Configuración
