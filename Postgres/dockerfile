@@ -5,5 +5,4 @@ COPY data/ ./data/
 COPY ingestpostgres.py .
 
 # Exponer puerto del contenedor (reemplazar antes de usar)
-EXPOSE ___
 CMD ["python3", "ingestpostgres.py"]

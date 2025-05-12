@@ -9,7 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY data/ ./data/
 COPY IngestaMySQL.py .
 
-# Exponer puerto del contenedor (reemplazar antes de usar)
-EXPOSE ___
-
 CMD ["python", "IngestaMySQL.py"]
