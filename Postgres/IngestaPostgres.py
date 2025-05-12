@@ -1,4 +1,3 @@
-# ingesta_postgres.py
 import csv
 import psycopg2
 
@@ -9,29 +8,22 @@ DB_NAME     = "personadb"
 DB_USER     = "postgres"
 DB_PASSWORD = "utec"
 
-# ————— Parámetros de batch —————
 BATCH_SIZE = 1000
 
-# ————— Función genérica de inserción —————
 def copy_csv_to_table(cursor, csv_path, table_name, columns):
-    """
-    Lee csv_path, omite la cabecera y hace INSERTs en lotes a table_name.
-    `columns` es la lista de nombres de columna en orden.
-    """
     placeholder = ", ".join(["%s"] * len(columns))
     cols        = ", ".join(columns)
     sql         = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholder});"
 
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
-        next(reader)  # saltar cabecera
+        next(reader)
         batch = []
         for row in reader:
             batch.append(row)
             if len(batch) >= BATCH_SIZE:
                 cursor.executemany(sql, batch)
                 batch.clear()
-        # insertar resto
         if batch:
             cursor.executemany(sql, batch)
 
@@ -54,7 +46,6 @@ def main():
         ["dni","password","nombres","apellidos","fecha_nacimiento",
          "sexo","direccion","telefono","email","type"]
     )
-    print("→ persona.csv insertado")
 
     # 2) medico.csv
     copy_csv_to_table(
@@ -63,7 +54,6 @@ def main():
         "medico",
         ["id","especialidad","colegiatura","horario"]
     )
-    print("→ medico.csv insertado")
 
     # 3) paciente.csv
     copy_csv_to_table(
@@ -72,12 +62,10 @@ def main():
         "paciente",
         ["id","seguro_salud","estado_civil","tipo_sangre"]
     )
-    print("→ paciente.csv insertado")
 
     conn.commit()
     cur.close()
     conn.close()
-    print("Ingesta completada con éxito.")
 
 if __name__ == "__main__":
     main()
