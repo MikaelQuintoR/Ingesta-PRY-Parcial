@@ -1,49 +1,70 @@
-import boto3
-import mysql.connector
+import os
+import sys
 import pandas as pd
+import boto3
+from sqlalchemy import create_engine
 
 # ————— Configuración de conexión MySQL —————
-DB_CONFIG = {
-    "host":     "172.31.24.145",
-    "port":     8005,
-    "user":     "root",
-    "password": "utec",
-    "database": "citasdb"
-}
-BUCKET_NAME = "bucket-ingesta-mysql"
+DB_USER     = os.getenv('DB_USER', 'root')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'utec')
+DB_HOST     = os.getenv('DB_HOST', '172.31.24.145')
+DB_PORT     = os.getenv('DB_PORT', '8005')
+DB_NAME     = os.getenv('DB_NAME', 'citasdb')
+BUCKET_NAME = os.getenv('S3_BUCKET', 'bucket-ingesta-mysql')
+TABLES      = os.getenv('TABLES', 'citas,recetas').split(',')
 
+# Credenciales AWS
+AWS_KEY    = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_TOKEN  = os.getenv('AWS_SESSION_TOKEN')  # opcional
 
+# URI SQLAlchemy
+SQLALCHEMY_DATABASE_URI = (
+    f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
+# Crear engine
+try:
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+except Exception as e:
+    print(f"Error creando engine SQLAlchemy: {e}")
+    sys.exit(1)
+
+# Función para exportar
 def export_table_to_s3(table_name: str):
     try:
-        # Conexión a la base de datos
-        cnx = mysql.connector.connect(**DB_CONFIG)
-        df  = pd.read_sql(f"SELECT * FROM {table_name}", con=cnx)
-    except mysql.connector.Error as err:
-        print(f"Error de conexión o consulta en tabla {table_name}: {err}")
+        df = pd.read_sql(f"SELECT * FROM `{table_name}`", con=engine)
+    except Exception as e:
+        print(f"Error leyendo tabla {table_name}: {e}")
         return
-    finally:
-        # Cerrar conexión si existe
-        if 'cnx' in locals() and cnx.is_connected():
-            cnx.close()
 
-    # Exportar a CSV
     csv_file = f"{table_name}.csv"
     try:
         df.to_csv(csv_file, index=False, encoding="utf-8")
-    except Exception as err:
-        print(f"Error al generar CSV {csv_file}: {err}")
+    except Exception as e:
+        print(f"Error escribiendo CSV {csv_file}: {e}")
         return
 
-    # Subir a S3
+    # Configurar cliente S3 con credenciales
     try:
-        # boto3 lee credenciales de entorno o IAM role
-        s3 = boto3.client("s3")
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=AWS_KEY,
+            aws_secret_access_key=AWS_SECRET,
+            aws_session_token=AWS_TOKEN
+        )
+    except Exception as e:
+        print(f"Error configurando cliente S3: {e}")
+        return
+
+    # Subir archivo
+    try:
         s3.upload_file(csv_file, BUCKET_NAME, csv_file)
-        print(f"Tabla {table_name} subida correctamente a s3://{BUCKET_NAME}/{csv_file}")
-    except Exception as err:
-        print(f"Error al subir {csv_file} a S3: {err}")
+        print(f"{csv_file} subido a s3://{BUCKET_NAME}/{csv_file}")
+    except Exception as e:
+        print(f"Error subiendo {csv_file}: {e}")
 
 
 if __name__ == "__main__":
-    for tbl in ("citas", "recetas"):
+    for tbl in TABLES:
         export_table_to_s3(tbl)
