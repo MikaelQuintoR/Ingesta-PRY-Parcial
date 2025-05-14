@@ -9,7 +9,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir boto3 psycopg2-binary
 
 # Copia CSVs (tu carpeta 'Data') y el script con el nombre correcto
-COPY Data/ ./data/
+COPY data/ ./data/
 COPY IngestaPostgres.py ./
 
 # Arranca el script
