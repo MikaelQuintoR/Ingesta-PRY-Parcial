@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 RUN pip install --no-cache-dir boto3
 
 # Copia el script con el nombre correcto
-COPY upload_to_s3.py ./
+COPY IngestaPostgres.py ./
 
 # Copia la carpeta de datos
 COPY data/ ./data/
