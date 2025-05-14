@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # Descargar y verificar archivos CSV
     for table, filename in CSV_FILES.items():
-        key = f"{S3_PREFIX}{filename}"
+        key = f"{filename}"
         local_path = os.path.join(LOCAL_DATA_DIR, filename)
         print(f"Descargando {key} a {local_path}...")
         try:
