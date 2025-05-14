@@ -1,12 +1,17 @@
+# Dockerfile
+
 FROM python:3.12-slim
 
+WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app
+# Instala boto3
+RUN pip install --no-cache-dir boto3
 
-RUN pip install --no-cache-dir boto3 psycopg2-binary
+# Copia sólo lo necesario
+COPY UploadCSVsToS3.py ./
+COPY data/ ./data/
 
-# Copia el script (ya no necesitas copiar data/, pues se descarga de S3)
-COPY IngestaPostgres.py ./
-
-CMD ["python3", "IngestaPostgres.py"]
+# Asume que AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY (y opcionalmente AWS_SESSION_TOKEN)
+# se pasarán en tiempo de ejecución via `-e`.
+CMD ["python3", "UploadCSVsToS3.py"]

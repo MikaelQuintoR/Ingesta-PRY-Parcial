@@ -1,108 +1,52 @@
+
 import os
-import csv
+import sys
 import boto3
-import psycopg2
 from botocore.exceptions import ClientError
 
 # ————— Configuración de AWS S3 —————
 AWS_S3_BUCKET = "ingesta-pryparcial"
-# No usamos prefijo: los CSV están en la raíz del bucket
+# Si quieres subir a un subdirectorio, p. ej. "data/":
+# S3_PREFIX = "data/"
+S3_PREFIX = ""  
 
-# ————— Configuración de conexión PostgreSQL —————
-DB_HOST     = "172.31.24.145"
-DB_PORT     = 8006
-DB_NAME     = "personasdb"
-DB_USER     = "postgres"
-DB_PASSWORD = "utec"
-
-BATCH_SIZE     = 1000
+# ————— Archivos locales a subir —————
 LOCAL_DATA_DIR = "data"
-CSV_FILES = {
-    "persona":  "persona.csv",
-    "medico":   "medico.csv",
-    "paciente": "paciente.csv",
-}
+CSV_FILES = [
+    "persona.csv",
+    "medico.csv",
+    "paciente.csv",
+]
 
-def ensure_local_dir(path):
-    os.makedirs(path, exist_ok=True)
-
-def download_csv_from_s3(s3_client, bucket, key, local_path):
+def upload_file(s3_client, local_path, bucket, key):
     try:
-        s3_client.head_object(Bucket=bucket, Key=key)
-    except ClientError:
-        raise FileNotFoundError(f"Archivo {key} no encontrado en el bucket {bucket}")
-    s3_client.download_file(bucket, key, local_path)
+        s3_client.upload_file(local_path, bucket, key)
+        print(f" {local_path} → s3://{bucket}/{key}")
+    except ClientError as e:
+        print(f" Error subiendo {local_path} a {key}: {e}")
+        sys.exit(1)
 
-def copy_csv_to_table(cursor, csv_path, table_name, columns):
-    placeholder = ", ".join(["%s"] * len(columns))
-    cols = ", ".join(columns)
-    sql = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholder});"
+def main():
+    # Comprueba que existe el directorio
+    if not os.path.isdir(LOCAL_DATA_DIR):
+        print(f"Directorio local '{LOCAL_DATA_DIR}' no existe.")
+        sys.exit(1)
 
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader)  # saltar encabezado
-        batch = []
-        for row in reader:
-            batch.append(row)
-            if len(batch) >= BATCH_SIZE:
-                cursor.executemany(sql, batch)
-                batch.clear()
-        if batch:
-            cursor.executemany(sql, batch)
-
-if __name__ == "__main__":
-    # 1) Prepara directorio
-    ensure_local_dir(LOCAL_DATA_DIR)
+    # Crea cliente S3 (usa variables de entorno AWS_* para credenciales)
     s3 = boto3.client('s3')
 
-    # 2) Descarga CSVs desde la raíz del bucket
-    for table, filename in CSV_FILES.items():
-        key = filename  # persona.csv, medico.csv, paciente.csv
+    # Recorre cada CSV y súbelo
+    for filename in CSV_FILES:
         local_path = os.path.join(LOCAL_DATA_DIR, filename)
-        print(f"Descargando {key} a {local_path}...")
-        try:
-            download_csv_from_s3(s3, AWS_S3_BUCKET, key, local_path)
-        except FileNotFoundError as e:
-            print(e)
-            exit(1)
+        if not os.path.isfile(local_path):
+            print(f"Archivo local no encontrado: {local_path}")
+            sys.exit(1)
 
-    # 3) Inserta en PostgreSQL
-    try:
-        conn = psycopg2.connect(
-            host     = DB_HOST,
-            port     = DB_PORT,
-            dbname   = DB_NAME,
-            user     = DB_USER,
-            password = DB_PASSWORD
-        )
-        cur = conn.cursor()
+        # Si quieres usar subcarpeta en S3, asegúrate de que termine en '/'
+        key = f"{S3_PREFIX}{filename}"
+        upload_file(s3, local_path, AWS_S3_BUCKET, key)
 
-        copy_csv_to_table(
-            cur,
-            os.path.join(LOCAL_DATA_DIR, CSV_FILES['persona']),
-            "persona",
-            ["dni","password","nombres","apellidos","fecha_nacimiento",
-             "sexo","direccion","telefono","email","type"]
-        )
-        copy_csv_to_table(
-            cur,
-            os.path.join(LOCAL_DATA_DIR, CSV_FILES['medico']),
-            "medico",
-            ["id","especialidad","colegiatura","horario"]
-        )
-        copy_csv_to_table(
-            cur,
-            os.path.join(LOCAL_DATA_DIR, CSV_FILES['paciente']),
-            "paciente",
-            ["id","seguro_salud","estado_civil","tipo_sangre"]
-        )
+    print("Todos los archivos fueron subidos correctamente.")
 
-        conn.commit()
-        print("Carga completada exitosamente.")
-
-    except Exception as e:
-        print(f"Error durante la ingestión: {e}")
-        exit(1)
-    finally:
-        if 'cur' in locals(): cur.close()
-        if 'conn' in locals(): conn.close()
+if __name__ == "__main__":
+    main()
