@@ -7,7 +7,6 @@ from botocore.exceptions import ClientError
 
 # ————— Configuración de AWS S3 —————
 AWS_S3_BUCKET = "ingesta-pryparcial"
-S3_PREFIX     = "data/"
 
 # ————— Configuración de conexión PostgreSQL —————
 DB_HOST     = "172.31.24.145"
