@@ -12,7 +12,7 @@ MONGO_URI = os.getenv(
 )
 MONGO_DB        = os.getenv("MONGO_DB", "historialdb")
 MONGO_COLL      = os.getenv("MONGO_COLL", "examenes")
-BUCKET_NAME     = os.getenv("S3_BUCKET", "bucket-ingesta-parcial")
+BUCKET_NAME     = os.getenv("S3_BUCKET", "ingesta-pryparcial")
 OUTPUT_FILENAME = os.getenv("OUTPUT_FILE", "data.json")
 
 # Conexión a MongoDB

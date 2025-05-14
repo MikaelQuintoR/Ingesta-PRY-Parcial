@@ -9,7 +9,7 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', 'utec')
 DB_HOST     = os.getenv('DB_HOST', '172.31.24.145')
 DB_PORT     = os.getenv('DB_PORT', '8005')
 DB_NAME     = os.getenv('DB_NAME', 'citasdb')
-BUCKET_NAME = os.getenv('S3_BUCKET', 'bucket-ingesta-mysql')
+BUCKET_NAME = os.getenv('S3_BUCKET', 'ingesta-pryparcial')
 TABLES      = os.getenv('TABLES', 'citas,recetas').split(',')
 
 AWS_KEY    = os.getenv('AWS_ACCESS_KEY_ID')
