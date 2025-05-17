@@ -1,52 +1,48 @@
-
 import os
 import sys
-import boto3
-from botocore.exceptions import ClientError
+import pandas as pd
+from sqlalchemy import create_engine
 
-# ————— Configuración de AWS S3 —————
-AWS_S3_BUCKET = "ingesta-pryparcial"
-# Si quieres subir a un subdirectorio, p. ej. "data/":
-# S3_PREFIX = "data/"
-S3_PREFIX = "Postgres/"  
+# Configuración de la conexión
+DB_USER     = os.getenv('DB_USER', 'postgres')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'utec')
+DB_HOST     = os.getenv('DB_HOST', '172.31.24.145')
+DB_PORT     = os.getenv('DB_PORT', '8006')
+DB_NAME     = os.getenv('DB_NAME', 'personasdb')
+TABLES      = os.getenv('TABLES', 'medico,paciente,persona').split(',')
 
-# ————— Archivos locales a subir —————
-LOCAL_DATA_DIR = "data"
-CSV_FILES = [
-    "persona.csv",
-    "medico.csv",
-    "paciente.csv",
-]
+# URI de conexión para PostgreSQL
+SQLALCHEMY_DATABASE_URI = (
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
-def upload_file(s3_client, local_path, bucket, key):
+# Crear conexión
+try:
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+except Exception as e:
+    print(f"Error creando engine SQLAlchemy: {e}")
+    sys.exit(1)
+
+# Función para insertar cada tabla desde su CSV en 'data/'
+def insert_table_from_csv(table_name: str):
+    csv_file = os.path.join('data', f"{table_name}.csv")
+    if not os.path.exists(csv_file):
+        print(f"Archivo {csv_file} no encontrado. Se omite.")
+        return
+
     try:
-        s3_client.upload_file(local_path, bucket, key)
-        print(f" {local_path} → s3://{bucket}/{key}")
-    except ClientError as e:
-        print(f" Error subiendo {local_path} a {key}: {e}")
-        sys.exit(1)
+        df = pd.read_csv(csv_file)
+    except Exception as e:
+        print(f"Error leyendo CSV {csv_file}: {e}")
+        return
 
-def main():
-    # Comprueba que existe el directorio
-    if not os.path.isdir(LOCAL_DATA_DIR):
-        print(f"Directorio local '{LOCAL_DATA_DIR}' no existe.")
-        sys.exit(1)
+    try:
+        df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+        print(f"Tabla '{table_name}' insertada correctamente en la base de datos.")
+    except Exception as e:
+        print(f"Error insertando tabla {table_name}: {e}")
 
-    # Crea cliente S3 (usa variables de entorno AWS_* para credenciales)
-    s3 = boto3.client('s3')
-
-    # Recorre cada CSV y súbelo
-    for filename in CSV_FILES:
-        local_path = os.path.join(LOCAL_DATA_DIR, filename)
-        if not os.path.isfile(local_path):
-            print(f"Archivo local no encontrado: {local_path}")
-            sys.exit(1)
-
-        # Si quieres usar subcarpeta en S3, asegúrate de que termine en '/'
-        key = f"{S3_PREFIX}{filename}"
-        upload_file(s3, local_path, AWS_S3_BUCKET, key)
-
-    print("Todos los archivos fueron subidos correctamente.")
-
+# Ejecutar para todas las tablas
 if __name__ == "__main__":
-    main()
+    for tbl in TABLES:
+        insert_table_from_csv(tbl)
