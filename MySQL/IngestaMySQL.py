@@ -22,9 +22,9 @@ except Exception as e:
     print(f"Error creando engine SQLAlchemy: {e}")
     sys.exit(1)
 
-# Función para insertar cada tabla desde su CSV
+# Función para insertar cada tabla desde su CSV en 'data/'
 def insert_table_from_csv(table_name: str):
-    csv_file = f"{table_name}.csv"
+    csv_file = os.path.join('data', f"{table_name}.csv")
     if not os.path.exists(csv_file):
         print(f"Archivo {csv_file} no encontrado. Se omite.")
         return
