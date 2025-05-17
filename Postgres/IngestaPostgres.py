@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 AWS_S3_BUCKET = "ingesta-pryparcial"
 # Si quieres subir a un subdirectorio, p. ej. "data/":
 # S3_PREFIX = "data/"
-S3_PREFIX = ""  
+S3_PREFIX = "Postgres/"  
 
 # ————— Archivos locales a subir —————
 LOCAL_DATA_DIR = "data"
